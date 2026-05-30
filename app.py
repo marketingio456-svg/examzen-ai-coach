@@ -1,326 +1,831 @@
+"""
+AI Study Coach for JEE/NEET Aspirants — v2 Mobile-First (Fixed Implementation)
+======================================================================
+==
+Fully mobile-optimised. No sidebar dependency.
+Powered by Google Gemini 2.5 Flash.
+"""
 import streamlit as st
-import google.generativeai as genai
-import json
-from datetime import datetime, timedelta
-
-st.set_page_config(
-    page_title="ExamZen · AI Study Coach",
-    page_icon="⚛️",
-    layout="wide",
-    initial_sidebar_state="expanded",
+import os
+from google import genai
+from google.genai import types
+# ─── PAGE CONFIG
+─────────────────────────────────────────────────────────
+─────
+st.set
+_page
+_
+config(
+page
+title="ExamZen AI · JEE/NEET Coach"
+,
+_
+page
+icon="⚡"
+,
+_
+layout="centered"
+,
+initial
+sidebar
+_
+_
+state="collapsed"
+,
 )
-
+# ─── MASTER CSS
+─────────────────────────────────────────────────────────
+──────
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
+@import
+url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&f
+amily=Outfit:wght@300;400;500;600;700;800;900&display=swap');
+/* ════════════════════════════════════════
+ROOT VARIABLES
+════════════════════════════════════════ */
 :root {
-    --bg:#0a0e1a; --surface:#111827; --card:#161d2e; --border:#1f2d45;
-    --accent1:#38bdf8; --accent2:#818cf8; --accent3:#34d399; --accent4:#fb923c;
-    --text:#e2e8f0; --muted:#64748b;
+--bg: #070B14;
+--surface: #0E1420;
+--card: #131929;
+--border: #1E2D45;
+--border2: #243550;
+--accent: #00D4FF;
+--accent2: #7B61FF;
+--green: #00FF88;
+--orange: #FF6B35;
+--pink: #FF3CAC;
+--text: #E8EDF5;
+--muted: #6B7FA3;
+--muted2: #4A5568;
 }
-html,body,[class*="css"]{font-family:'Space Grotesk',sans-serif;background-color:var(--bg)!important;color:var(--text)!important;}
-#MainMenu,footer,header{visibility:hidden;}
-.block-container{padding-top:1.5rem!important;max-width:1100px;}
-[data-testid="stSidebar"]{background:var(--surface)!important;border-right:1px solid var(--border);}
-[data-testid="stSidebar"] *{color:var(--text)!important;}
-textarea,input[type="text"],input[type="password"]{background:var(--card)!important;border:1px solid var(--border)!important;color:var(--text)!important;border-radius:8px!important;}
-.stButton>button{background:linear-gradient(135deg,var(--accent1),var(--accent2))!important;color:#0a0e1a!important;font-weight:700!important;border:none!important;border-radius:8px!important;padding:.55rem 1.4rem!important;}
-.ez-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1.25rem 1.5rem;margin-bottom:1rem;}
-.ez-card-accent{border-left:3px solid var(--accent1);}
-.feature-badge{display:inline-block;font-size:.7rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:.18rem .6rem;border-radius:20px;margin-bottom:.6rem;}
-.badge-blue{background:rgba(56,189,248,.15);color:var(--accent1);border:1px solid rgba(56,189,248,.3);}
-.badge-violet{background:rgba(129,140,248,.15);color:var(--accent2);border:1px solid rgba(129,140,248,.3);}
-.badge-green{background:rgba(52,211,153,.15);color:var(--accent3);border:1px solid rgba(52,211,153,.3);}
-.badge-amber{background:rgba(251,146,60,.15);color:var(--accent4);border:1px solid rgba(251,146,60,.3);}
-.page-title{font-size:1.8rem;font-weight:700;line-height:1.2;margin-bottom:.25rem;}
-.page-sub{color:var(--muted);font-size:.95rem;margin-bottom:1.5rem;font-style:italic;}
-.chat-bubble-user{background:rgba(56,189,248,.08);border:1px solid rgba(56,189,248,.2);border-radius:12px 12px 2px 12px;padding:.75rem 1rem;margin:.5rem 0;text-align:right;font-size:.9rem;}
-.chat-bubble-ai{background:var(--card);border:1px solid var(--border);border-radius:12px 12px 12px 2px;padding:.75rem 1rem;margin:.5rem 0;font-size:.92rem;line-height:1.65;}
-.chat-label{font-size:.7rem;font-weight:600;letter-spacing:.07em;text-transform:uppercase;margin-bottom:.3rem;}
-.chat-label-user{color:var(--accent1);text-align:right;}
-.chat-label-ai{color:var(--accent3);}
-.divider{border-top:1px solid var(--border);margin:1.25rem 0;}
-table{width:100%!important;border-collapse:collapse!important;}
-th{background:rgba(56,189,248,.1)!important;color:var(--accent1)!important;font-weight:600!important;font-size:.8rem!important;text-transform:uppercase;padding:.6rem .8rem!important;border-bottom:1px solid var(--border)!important;}
-td{padding:.55rem .8rem!important;border-bottom:1px solid var(--border)!important;font-size:.88rem!important;vertical-align:top;}
+/* ════════════════════════════════════════
+GLOBAL RESET & BASE
+════════════════════════════════════════ */
+*
+,
+*::before,
+*::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body, [class*="css"], .stApp {
+font-family: 'Space Grotesk'
+, sans-serif !important;
+background: var(--bg) !important;
+color: var(--text) !important;
+}
+/* Animated mesh background */
+.stApp::before {
+content: '';
+position: fixed;
+inset: 0;
+background:
+radial-gradient(ellipse 80% 50% at 20% 10%, rgba(0,212,255,0.06) 0%, transparent 60%),
+radial-gradient(ellipse 60% 40% at 80% 80%, rgba(123,97,255,0.07) 0%, transparent
+60%),
+radial-gradient(ellipse 50% 60% at 50% 50%, rgba(0,255,136,0.03) 0%, transparent 70%);
+pointer-events: none;
+z-index: 0;
+}
+/* ════════════════════════════════════════
+HIDE STREAMLIT CHROME
+════════════════════════════════════════ */
+#MainMenu, footer, header,
+section[data-testid="stSidebar"],
+.stDeployButton,
+[data-testid="collapsedControl"] { display: none !important; }
+.block-container {
+padding: 0 1rem 6rem 1rem !important;
+max-width: 520px !important;
+margin: 0 auto !important;
+}
+/* ════════════════════════════════════════
+KEYFRAME ANIMATIONS
+════════════════════════════════════════ */
+@keyframes fadeUp {
+from { opacity: 0; transform: translateY(24px); }
+to { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeIn {
+from { opacity: 0; }
+to { opacity: 1; }
+}
+@keyframes glow {
+0%, 100% { box-shadow: 0 0 20px rgba(0,212,255,0.15); }
+50% { box-shadow: 0 0 35px rgba(0,212,255,0.3), 0 0 60px rgba(0,212,255,0.1); }
+}
+@keyframes pulse {
+0%, 100% { opacity: 1; transform: scale(1); }
+50% { opacity: 0.7; transform: scale(0.97); }
+}
+@keyframes dotPulse {
+0%, 80%, 100% { transform: scale(0); opacity: 0.5; }
+40% { transform: scale(1.0); opacity: 1; }
+}
+/* ════════════════════════════════════════
+TOP HEADER BAR
+════════════════════════════════════════ */
+.top-bar {
+position: sticky;
+top: 0;
+z-index: 999;
+background: rgba(7,11,20,0.92);
+backdrop-filter: blur(20px);
+-webkit-backdrop-filter: blur(20px);
+border-bottom: 1px solid var(--border);
+padding: 0.9rem 1.2rem;
+margin: 0 -1rem 1.5rem -1rem;
+display: flex;
+align-items: center;
+justify-content: space-between;
+animation: fadeIn 0.4s ease;
+}
+.top-bar-logo {
+font-family: 'Outfit'
+, sans-serif;
+font-size: 1.25rem;
+font-weight: 800;
+background: linear-gradient(135deg, var(--accent), var(--accent2));
+-webkit-background-clip: text;
+-webkit-text-fill-color: transparent;
+background-clip: text;
+letter-spacing: -0.02em;
+}
+.top-bar-badge {
+background: rgba(0,212,255,0.1);
+border: 1px solid rgba(0,212,255,0.25);
+color: var(--accent);
+font-size: 0.68rem;
+font-weight: 600;
+letter-spacing: 0.08em;
+text-transform: uppercase;
+padding: 0.25rem 0.6rem;
+border-radius: 20px;
+}
+/* ════════════════════════════════════════
+BOTTOM NAV BAR OVERLAY STRUCTURING
+════════════════════════════════════════ */
+.bottom-nav {
+position: fixed;
+bottom: 0;
+left: 0;
+right: 0;
+z-index: 1000;
+background: rgba(13,18,30,0.97);
+backdrop-filter: blur(24px);
+-webkit-backdrop-filter: blur(24px);
+border-top: 1px solid var(--border);
+padding: 0.6rem 0.5rem;
+display: flex;
+justify-content: space-around;
+align-items: center;
+animation: fadeIn 0.5s ease;
+pointer-events: none; /* Let clicks pass through cleanly to Streamlit buttons below */
+}
+.nav-item {
+display: flex;
+flex-direction: column;
+align-items: center;
+gap: 0.2rem;
+padding: 0.4rem 0.8rem;
+border-radius: 12px;
+min-width: 60px;
+color: var(--muted);
+}
+.nav-item.active {
+background: rgba(0,212,255,0.1);
+color: var(--accent);
+}
+.nav-icon { font-size: 1.3rem; line-height: 1; }
+.nav-label {
+font-size: 0.62rem;
+font-weight: 600;
+letter-spacing: 0.04em;
+text-transform: uppercase;
+}
+/* Click Layer Container */
+.nav-trigger-container {
+position: fixed;
+bottom: 0;
+left: 0;
+right: 0;
+z-index: 1001;
+height: 64px;
+display: flex;
+justify-content: space-around;
+align-items: center;
+padding: 0 0.5rem;
+}
+.nav-trigger-container .stButton,
+.nav-trigger-container .stButton > button {
+height: 100% !important;
+width: 100% !important;
+background: transparent !important;
+border: none !important;
+box-shadow: none !important;
+color: transparent !important;
+border-radius: 0px !important;
+margin: 0 !important;
+padding: 0 !important;
+}
+/* ════════════════════════════════════════
+HERO SECTION
+════════════════════════════════════════ */
+.hero {
+text-align: center;
+padding: 2rem 0.5rem 1.5rem;
+animation: fadeUp 0.6s ease;
+}
+.hero-eyebrow {
+display: inline-flex;
+align-items: center;
+gap: 0.4rem;
+background: rgba(0,255,136,0.08);
+border: 1px solid rgba(0,255,136,0.2);
+color: var(--green);
+font-size: 0.72rem;
+font-weight: 600;
+letter-spacing: 0.1em;
+text-transform: uppercase;
+padding: 0.3rem 0.8rem;
+border-radius: 20px;
+margin-bottom: 1rem;
+}
+.hero-dot {
+width: 6px; height: 6px;
+background: var(--green);
+border-radius: 50%;
+animation: pulse 2s infinite;
+}
+.hero-title {
+font-family: 'Outfit'
+, sans-serif;
+font-size: 2.4rem;
+font-weight: 900;
+line-height: 1.1;
+letter-spacing: -0.03em;
+color: #FFFFFF;
+margin-bottom: 0.8rem;
+}
+.hero-title span {
+background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%);
+-webkit-background-clip: text;
+-webkit-text-fill-color: transparent;
+background-clip: text;
+}
+.hero-sub {
+font-size: 0.92rem;
+color: var(--muted);
+line-height: 1.65;
+max-width: 320px;
+margin: 0 auto 1.5rem;
+font-weight: 300;
+}
+.hero-stats {
+display: flex;
+justify-content: center;
+gap: 1.5rem;
+margin-top: 1.2rem;
+}
+.stat-item {
+text-align: center;
+}
+.stat-number {
+font-family: 'Outfit'
+, sans-serif;
+font-size: 1.4rem;
+font-weight: 800;
+color: #FFFFFF;
+line-height: 1;
+}
+.stat-label {
+font-size: 0.68rem;
+color: var(--muted);
+text-transform: uppercase;
+letter-spacing: 0.06em;
+margin-top: 0.2rem;
+}
+/* ════════════════════════════════════════
+FEATURE CARDS (Home)
+════════════════════════════════════════ */
+.feature-grid { display: flex; flex-direction: column; gap: 0.9rem; margin: 1.2rem 0; }
+.fcard {
+background: var(--card);
+border: 1px solid var(--border);
+border-radius: 16px;
+padding: 1.2rem 1.3rem;
+display: flex;
+align-items: flex-start;
+gap: 1rem;
+transition: all 0.25s ease;
+animation: fadeUp 0.5s ease both;
+position: relative;
+overflow: hidden;
+}
+.fcard:nth-child(1) { animation-delay: 0.1s; border-left: 3px solid var(--accent); }
+.fcard:nth-child(2) { animation-delay: 0.2s; border-left: 3px solid var(--accent2); }
+.fcard:nth-child(3) { animation-delay: 0.3s; border-left: 3px solid var(--green); }
+.fcard-icon {
+width: 48px; height: 48px;
+border-radius: 12px;
+display: flex; align-items: center; justify-content: center;
+font-size: 1.4rem;
+flex-shrink: 0;
+}
+.fcard:nth-child(1) .fcard-icon { background: rgba(0,212,255,0.1); }
+.fcard:nth-child(2) .fcard-icon { background: rgba(123,97,255,0.1); }
+.fcard:nth-child(3) .fcard-icon { background: rgba(0,255,136,0.1); }
+.fcard-body { flex: 1; }
+.fcard-tag {
+font-size: 0.65rem;
+font-weight: 700;
+letter-spacing: 0.1em;
+text-transform: uppercase;
+margin-bottom: 0.3rem;
+}
+.fcard:nth-child(1) .fcard-tag { color: var(--accent); }
+.fcard:nth-child(2) .fcard-tag { color: var(--accent2); }
+.fcard:nth-child(3) .fcard-tag { color: var(--green); }
+.fcard-title {
+font-family: 'Outfit'
+, sans-serif;
+font-size: 1rem;
+font-weight: 700;
+color: #FFFFFF;
+margin-bottom: 0.3rem;
+}
+.fcard-desc { font-size: 0.8rem; color: var(--muted); line-height: 1.55; }
+.fcard-arrow { color: var(--muted2); font-size: 1rem; align-self: center; }
+/* ════════════════════════════════════════
+PAGE HEADERS
+════════════════════════════════════════ */
+.page-header {
+padding: 1.5rem 0 1rem;
+animation: fadeUp 0.4s ease;
+}
+.page-eyebrow {
+font-size: 0.7rem;
+font-weight: 700;
+letter-spacing: 0.12em;
+text-transform: uppercase;
+color: var(--accent);
+margin-bottom: 0.4rem;
+}
+.page-title {
+font-family: 'Outfit'
+, sans-serif;
+font-size: 1.8rem;
+font-weight: 800;
+color: #FFFFFF;
+letter-spacing: -0.02em;
+line-height: 1.2;
+}
+.page-sub { font-size: 0.85rem; color: var(--muted); margin-top: 0.4rem; line-height: 1.55; }
+/* ════════════════════════════════════════
+CHAT MESSAGES
+════════════════════════════════════════ */
+.chat-wrap { display: flex; flex-direction: column; gap: 0.8rem; margin: 1rem 0; }
+.msg-user {
+display: flex;
+justify-content: flex-end;
+animation: fadeUp 0.3s ease;
+margin-bottom: 0.6rem;
+}
+.msg-user-bubble {
+background: linear-gradient(135deg, var(--accent2), #5B4BD0);
+color: #FFFFFF;
+border-radius: 18px 18px 4px 18px;
+padding: 0.75rem 1rem;
+max-width: 85%;
+font-size: 0.88rem;
+line-height: 1.55;
+box-shadow: 0 4px 20px rgba(123,97,255,0.25);
+}
+.msg-ai {
+display: flex;
+gap: 0.6rem;
+align-items: flex-start;
+animation: fadeUp 0.3s ease;
+margin-bottom: 0.6rem;
+}
+.msg-ai-avatar {
+width: 32px; height: 32px;
+background: linear-gradient(135deg, var(--accent), var(--accent2));
+border-radius: 10px;
+display: flex; align-items: center; justify-content: center;
+font-size: 0.9rem;
+flex-shrink: 0;
+animation: glow 3s infinite;
+}
+.msg-ai-bubble {
+background: var(--card);
+border: 1px solid var(--border);
+color: var(--text);
+border-radius: 4px 18px 18px 18px;
+padding: 0.9rem 1rem;
+max-width: 88%;
+font-size: 0.88rem;
+line-height: 1.65;
+}
+/* Typing indicator */
+.typing-indicator {
+display: flex;
+gap: 0.25rem;
+padding: 0.6rem 0.8rem;
+background: var(--card);
+border: 1px solid var(--border);
+border-radius: 4px 18px 18px 18px;
+width: fit-content;
+}
+.typing-dot {
+width: 7px; height: 7px;
+background: var(--accent);
+border-radius: 50%;
+animation: dotPulse 1.4s infinite ease-in-out;
+}
+.typing-dot:nth-child(2) { animation-delay: 0.2s; }
+.typing-dot:nth-child(3) { animation-delay: 0.4s; }
+/* ════════════════════════════════════════
+INPUT AREA
+════════════════════════════════════════ */
+.stTextArea textarea {
+background: var(--card) !important;
+border: 1px solid var(--border) !important;
+border-radius: 14px !important;
+color: var(--text) !important;
+font-family: 'Space Grotesk'
+, sans-serif !important;
+font-size: 0.9rem !important;
+line-height: 1.55 !important;
+padding: 0.9rem 1rem !important;
+resize: none !important;
+}
+.stTextArea textarea:focus {
+border-color: var(--accent) !important;
+box-shadow: 0 0 0 3px rgba(0,212,255,0.1) !important;
+}
+.stTextInput input {
+background: var(--card) !important;
+border: 1px solid var(--border) !important;
+border-radius: 12px !important;
+color: var(--text) !important;
+font-family: 'Space Grotesk'
+, sans-serif !important;
+font-size: 0.9rem !important;
+padding: 0.75rem 1rem !important;
+}
+/* Chat input */
+.stChatInputContainer,
+[data-testid="stChatInput"] {
+background: var(--card) !important;
+border: 1px solid var(--border2) !important;
+border-radius: 16px !important;
+}
+.stChatInput textarea {
+background: transparent !important;
+color: var(--text) !important;
+font-family: 'Space Grotesk'
+, sans-serif !important;
+}
+/* ════════════════════════════════════════
+BUTTONS
+════════════════════════════════════════ */
+.stButton > button {
+background: linear-gradient(135deg, var(--accent), #00A8CC) !important;
+color: #000000 !important;
+font-family: 'Outfit'
+, sans-serif !important;
+font-weight: 700 !important;
+font-size: 0.88rem !important;
+letter-spacing: 0.04em !important;
+border: none !important;
+border-radius: 12px !important;
+padding: 0.7rem 1.5rem !important;
+transition: all 0.2s ease !important;
+box-shadow: 0 4px 20px rgba(0,212,255,0.25) !important;
+width: 100% !important;
+}
+.stButton > button:hover {
+transform: translateY(-2px) !important;
+box-shadow: 0 8px 30px rgba(0,212,255,0.35) !important;
+}
+/* ════════════════════════════════════════
+SELECT / DROPDOWN
+════════════════════════════════════════ */
+.stSelectbox > div > div {
+background: var(--card) !important;
+border: 1px solid var(--border) !important;
+border-radius: 12px !important;
+color: var(--text) !important;
+}
+.stSelectbox label {
+color: var(--muted) !important;
+font-size: 0.8rem !important;
+font-weight: 600 !important;
+letter-spacing: 0.04em !important;
+}
+/* ════════════════════════════════════════
+RESULT BOXES
+════════════════════════════════════════ */
+.result-box {
+background: var(--card);
+border: 1px solid var(--border);
+border-top: 3px solid var(--green);
+border-radius: 16px;
+padding: 1.3rem;
+margin-top: 1.2rem;
+animation: fadeUp 0.4s ease;
+font-size: 0.88rem;
+line-height: 1.75;
+color: var(--text);
+}
+.result-label {
+font-size: 0.68rem;
+font-weight: 700;
+letter-spacing: 0.1em;
+text-transform: uppercase;
+color: var(--green);
+margin-bottom: 0.8rem;
+display: flex;
+align-items: center;
+gap: 0.4rem;
+}
+.result-label::before {
+content: '';
+display: inline-block;
+width: 6px; height: 6px;
+background: var(--green);
+border-radius: 50%;
+animation: pulse 2s infinite;
+}
+.error-box {
+background: rgba(255,59,59,0.06);
+border: 1px solid rgba(255,59,59,0.2);
+border-radius: 12px;
+padding: 0.9rem 1rem;
+font-size: 0.85rem;
+color: #FF6B6B;
+margin-top: 0.8rem;
+animation: fadeUp 0.3s ease;
+}
+.info-box {
+background: rgba(0,212,255,0.05);
+border: 1px solid rgba(0,212,255,0.15);
+border-radius: 12px;
+padding: 0.9rem 1rem;
+font-size: 0.85rem;
+color: var(--muted);
+margin: 0.8rem 0;
+line-height: 1.6;
+}
+.info-box b { color: var(--text); }
+.sdiv {
+border: none;
+border-top: 1px solid var(--border);
+margin: 1.2rem 0;
+}
+.chips { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0.6rem 0 1rem; }
+.chip {
+background: rgba(0,212,255,0.07);
+border: 1px solid rgba(0,212,255,0.18);
+color: var(--accent);
+font-size: 0.73rem;
+font-weight: 500;
+padding: 0.25rem 0.65rem;
+border-radius: 20px;
+}
+.stTextArea label, .stTextInput label, .stNumberInput label {
+color: var(--muted) !important;
+font-size: 0.8rem !important;
+font-weight: 600 !important;
+text-transform: uppercase !important;
+}
+.stNumberInput input {
+background: var(--card) !important;
+border: 1px solid var(--border) !important;
+border-radius: 12px !important;
+color: var(--text) !important;
+}
+.stDownloadButton > button {
+background: transparent !important;
+color: var(--accent) !important;
+border: 1px solid rgba(0,212,255,0.3) !important;
+box-shadow: none !important;
+font-size: 0.83rem !important;
+}
+.stDownloadButton > button:hover {
+background: rgba(0,212,255,0.08) !important;
+border-color: var(--accent) !important;
+}
+[data-testid="stChatMessage"] {
+background: transparent !important;
+border: none !important;
+padding: 0 !important;
+}
 </style>
-""", unsafe_allow_html=True)
-
-@st.cache_resource
-def get_client():
-    try:
-        api_key = st.secrets["GEMINI_API_KEY"]
-        genai.configure(api_key=api_key)
-        return genai.GenerativeModel("gemini-1.5-flash")
-    except Exception:
-        return None
-
-def call_gemini(model, system, user, temperature=0.7):
-    try:
-        prompt = f"{system}\n\n{user}"
-        response = model.generate_content(
-            prompt,
-            generation_config=genai.types.GenerationConfig(
-                temperature=temperature,
-                max_output_tokens=2048,
-            )
-        )
-        return response.text
-    except Exception as e:
-        raise e
-
-if "chat_history" not in st.session_state:
-    st.session_state.chat_history = []
-if "mistake_log" not in st.session_state:
-    st.session_state.mistake_log = []
-if "quiz_state" not in st.session_state:
-    st.session_state.quiz_state = {}
-
-with st.sidebar:
-    st.markdown("""
-    <div style='text-align:center;padding:.5rem 0 1.2rem'>
-        <div style='font-size:2.4rem'>⚛️</div>
-        <div style='font-size:1.25rem;font-weight:700'>ExamZen</div>
-        <div style='font-size:.75rem;color:#64748b;text-transform:uppercase;letter-spacing:.08em'>AI Study Coach · JEE / NEET</div>
-    </div>
-    """, unsafe_allow_html=True)
-    nav = st.radio("Navigate", [
-        "🏠  Home","🧑‍🏫  Mentor","🔬  Correctify",
-        "📅  TimeTable","⚡  QuickQuiz","📊  My Progress"
-    ], label_visibility="collapsed")
-    st.markdown("<div class='divider'></div>", unsafe_allow_html=True)
-    st.markdown("**Subject Context**")
-    subject = st.selectbox("subject", ["Physics","Chemistry","Biology","Mathematics"], label_visibility="collapsed")
-    exam = st.selectbox("exam", ["JEE Main","JEE Advanced","NEET UG"], label_visibility="collapsed")
-    st.markdown("<div class='divider'></div>", unsafe_allow_html=True)
-    st.markdown("<div style='font-size:.72rem;color:#475569;text-align:center'>Built for JEE/NEET aspirants 🚀<br>Powered by Gemini</div>", unsafe_allow_html=True)
-
-model = get_client()
-
-def api_missing():
-    st.error("API key not found. Add GEMINI_API_KEY in Streamlit secrets.", icon="🔑")
-
-if nav == "🏠  Home":
-    st.markdown("<div class='page-title'>Welcome to <span style='color:#38bdf8'>ExamZen</span> ✦</div>", unsafe_allow_html=True)
-    st.markdown("<div class='page-sub'>Your personal AI-powered study companion for JEE and NEET success</div>", unsafe_allow_html=True)
-    col1, col2 = st.columns(2, gap="medium")
-    features = [
-        ("🧑‍🏫","badge-blue","MENTOR","Chat with your AI tutor. Ask any concept and get clear explanations with real-world analogies tailored to JEE/NEET."),
-        ("🔬","badge-violet","CORRECTIFY","Paste a wrong answer. The AI diagnoses your exact conceptual gap and explains where your reasoning broke down."),
-        ("📅","badge-green","TIMETABLE","Enter your weak topics and get a smart personalised 7-day revision schedule with daily targets."),
-        ("⚡","badge-amber","QUICKQUIZ","Generate instant MCQs on any topic. Get immediate AI feedback on your reasoning."),
-    ]
-    for i,(icon,badge_cls,title,desc) in enumerate(features):
-        col = col1 if i%2==0 else col2
-        with col:
-            st.markdown(f"<div class='ez-card ez-card-accent'><div style='font-size:1.6rem;margin-bottom:.4rem'>{icon}</div><span class='feature-badge {badge_cls}'>{title}</span><div style='font-size:1rem;font-weight:600;margin-bottom:.35rem'>{title.title()}</div><div style='color:#94a3b8;font-size:.875rem;line-height:1.55'>{desc}</div></div>", unsafe_allow_html=True)
-    st.markdown("<div class='divider'></div>", unsafe_allow_html=True)
-    st.info("👈 Pick a feature from the sidebar to get started.", icon="💡")
-
-elif nav == "🧑‍🏫  Mentor":
-    st.markdown(f"<div class='page-title'>🧑‍🏫 AI Mentor</div>", unsafe_allow_html=True)
-    st.markdown(f"<div class='page-sub'>Ask any {subject} concept and get a clear explanation built for {exam}</div>", unsafe_allow_html=True)
-    MENTOR_SYSTEM = f"""You are ExamZen Mentor, an elite {subject} teacher for {exam} preparation.
-Rules:
-1. Always use at least ONE vivid real-world analogy.
-2. Structure every reply with: Core Idea, Real-World Analogy, The Science, Common Exam Traps, Memory Tip.
-3. Keep language friendly but precise.
-4. Flag HIGH-YIELD concepts for {exam}.
-5. Stay strictly on {subject} topics."""
-    for msg in st.session_state.chat_history:
-        if msg["role"]=="user":
-            st.markdown(f"<div class='chat-label chat-label-user'>You</div><div class='chat-bubble-user'>{msg['content']}</div>", unsafe_allow_html=True)
-        else:
-            st.markdown(f"<div class='chat-label chat-label-ai'>⚛️ ExamZen Mentor</div><div class='chat-bubble-ai'>{msg['content']}</div>", unsafe_allow_html=True)
-    st.markdown("<div class='divider'></div>", unsafe_allow_html=True)
-    col_inp,col_btn = st.columns([5,1])
-    with col_inp:
-        user_q = st.text_area("Your question", placeholder="e.g. Why does current lag voltage in an inductor?", height=90, label_visibility="collapsed")
-    with col_btn:
-        st.write("")
-        send = st.button("Ask", use_container_width=True)
-    col_clr,_ = st.columns([1,5])
-    with col_clr:
-        if st.button("Clear Chat"):
-            st.session_state.chat_history=[]
-            st.rerun()
-    if send:
-        if not model: api_missing()
-        elif not user_q.strip(): st.warning("Please type a question first.", icon="✏️")
-        else:
-            with st.spinner("Mentor is thinking..."):
-                history_text="\n".join(f"{'Student' if m['role']=='user' else 'Mentor'}: {m['content']}" for m in st.session_state.chat_history[-6:])
-                full_prompt=(history_text+f"\nStudent: {user_q}").strip()
-                try:
-                    reply=call_gemini(model,MENTOR_SYSTEM,full_prompt,temperature=0.65)
-                    st.session_state.chat_history.append({"role":"user","content":user_q})
-                    st.session_state.chat_history.append({"role":"assistant","content":reply})
-                    st.rerun()
-                except Exception as e: st.error(f"API error: {e}",icon="🔴")
-
-elif nav == "🔬  Correctify":
-    st.markdown("<div class='page-title'>🔬 Correctify</div>", unsafe_allow_html=True)
-    st.markdown("<div class='page-sub'>Paste a question and your wrong answer. The AI finds exactly where you went wrong.</div>", unsafe_allow_html=True)
-    CORRECTIFY_SYSTEM = f"""You are ExamZen Correctify, a diagnostic tutor for {exam} {subject}.
-Given a question and a student's incorrect answer produce:
-1. What Went Wrong - the exact mistake in 1-2 sentences.
-2. Root Cause - the underlying misconception.
-3. Correct Approach - step-by-step correct solution.
-4. The Rule to Remember - one memorable principle.
-5. Similar Traps - 2 other question types using the same misconception.
-6. Difficulty for {exam}: Easy / Medium / High"""
-    col_a,col_b=st.columns(2,gap="large")
-    with col_a:
-        question_text=st.text_area("The Question",placeholder="Paste the full question here...",height=160)
-    with col_b:
-        student_answer=st.text_area("Your Answer or Working",placeholder="What did you write or calculate?",height=160)
-    if st.button("Diagnose My Mistake"):
-        if not model: api_missing()
-        elif not question_text.strip() or not student_answer.strip(): st.warning("Please fill in both fields.",icon="✏️")
-        else:
-            with st.spinner("Diagnosing..."):
-                try:
-                    prompt=f"QUESTION:\n{question_text}\n\nSTUDENT ANSWER:\n{student_answer}"
-                    diagnosis=call_gemini(model,CORRECTIFY_SYSTEM,prompt,temperature=0.4)
-                    st.success("Diagnosis complete!",icon="✅")
-                    st.markdown(f"<div class='ez-card'>{diagnosis}</div>",unsafe_allow_html=True)
-                    st.session_state.mistake_log.append({"question":question_text[:80]+"...","diagnosis":diagnosis,"ts":datetime.now().strftime("%d %b, %H:%M"),"subject":subject})
-                except Exception as e: st.error(f"API error: {e}",icon="🔴")
-    st.markdown("<div class='divider'></div>",unsafe_allow_html=True)
-    st.markdown("### Your Mistake Log")
-    if not st.session_state.mistake_log:
-        st.info("No mistakes logged yet. Every diagnosis you run is saved here.",icon="📝")
-    else:
-        for entry in reversed(st.session_state.mistake_log):
-            with st.expander(f"[{entry['ts']}] {entry['subject']} - {entry['question']}"):
-                st.markdown(entry["diagnosis"])
-        if st.button("Clear Mistake Log"):
-            st.session_state.mistake_log=[]
-            st.rerun()
-
-elif nav == "📅  TimeTable":
-    st.markdown("<div class='page-title'>📅 Smart TimeTable</div>",unsafe_allow_html=True)
-    st.markdown("<div class='page-sub'>Tell us your weak spots and get a hyper-targeted 7-day revision plan.</div>",unsafe_allow_html=True)
-    TIMETABLE_SYSTEM=f"""You are ExamZen study planner for {exam}. Create a focused 7-day revision schedule.
-Output a valid Markdown table with these columns:
-Day | Date | Topic | Subtopics to Cover | Resources | Goal | Evening Revision
-Rules:
-- Weaker topics get more days and repetitions.
-- Revisit Day 1 topics on Day 3 and Day 5.
-- Add one practice test on Day 7.
-- After the table add a 3-point Strategy Note."""
-    col1,col2=st.columns([3,2],gap="large")
-    with col1:
-        weak_topics=st.text_area("Your Weak Topics",placeholder="e.g. Rotational Dynamics, Electrochemistry, Limits",height=120)
-        daily_hours=st.slider("Study hours per day",2,12,6)
-    with col2:
-        start_date=st.date_input("Start date",datetime.today())
-        study_goal=st.text_input("Your Goal",placeholder="e.g. Score 95% in JEE Main")
-    if st.button("Generate My 7-Day Plan"):
-        if not model: api_missing()
-        elif not weak_topics.strip(): st.warning("Please enter at least one weak topic.",icon="📌")
-        else:
-            with st.spinner("Building your personalised plan..."):
-                try:
-                    dates=[(start_date+timedelta(days=i)).strftime("%a %d %b") for i in range(7)]
-                    prompt=f"Weak topics: {weak_topics}\nDaily hours: {daily_hours}\nGoal: {study_goal or 'Maximise score in '+exam}\nDates: {', '.join(dates)}\nSubject: {subject}"
-                    plan=call_gemini(model,TIMETABLE_SYSTEM,prompt,temperature=0.5)
-                    st.success("Your plan is ready!",icon="🗓️")
-                    st.markdown(plan)
-                    st.download_button("Download as Markdown",data=plan,file_name="examzen_timetable.md",mime="text/markdown")
-                except Exception as e: st.error(f"API error: {e}",icon="🔴")
-
-elif nav == "⚡  QuickQuiz":
-    st.markdown("<div class='page-title'>⚡ QuickQuiz</div>",unsafe_allow_html=True)
-    st.markdown("<div class='page-sub'>Generate sharp MCQs on any topic. Get instant AI feedback.</div>",unsafe_allow_html=True)
-    QUIZ_GEN_SYSTEM=f"""You are an expert {exam} question-setter for {subject}.
-Generate exactly {{n}} multiple-choice questions on the topic provided.
-Return ONLY a JSON array with no extra text. Schema:
-[{{"q":"question","options":{{"A":"...","B":"...","C":"...","D":"..."}},"answer":"A","explanation":"explanation","difficulty":"Easy|Medium|Hard","topic_tag":"subtopic"}}]"""
-    FEEDBACK_SYSTEM=f"""You are a {exam} coach for {subject}.
-Given an MCQ and the student answer provide:
-1. Correct or Incorrect
-2. Why the correct answer is right
-3. Why the wrong choice is a trap if wrong
-4. One key insight to remember
-Keep under 150 words."""
-    col_q,col_s=st.columns([3,1])
-    with col_q:
-        quiz_topic=st.text_input("Topic for quiz",placeholder="e.g. Magnetic Force on Moving Charge")
-    with col_s:
-        n_questions=st.selectbox("Questions",[3,5,10],index=1)
-    if st.button("Generate Quiz"):
-        if not model: api_missing()
-        elif not quiz_topic.strip(): st.warning("Enter a topic first.",icon="📚")
-        else:
-            with st.spinner("Generating questions..."):
-                try:
-                    system=QUIZ_GEN_SYSTEM.replace("{n}",str(n_questions))
-                    raw=call_gemini(model,system,quiz_topic,temperature=0.75)
-                    raw=raw.strip().lstrip("```json").lstrip("```").rstrip("```").strip()
-                    questions=json.loads(raw)
-                    st.session_state.quiz_state={"questions":questions,"answers":{},"feedback":{},"submitted":set()}
-                except json.JSONDecodeError: st.error("Could not parse quiz. Try again.",icon="🔴")
-                except Exception as e: st.error(f"API error: {e}",icon="🔴")
-    qs=st.session_state.quiz_state
-    if qs and "questions" in qs:
-        st.markdown("<div class='divider'></div>",unsafe_allow_html=True)
-        correct_count=0
-        for i,q in enumerate(qs["questions"]):
-            diff_color={"Easy":"#34d399","Medium":"#fb923c","Hard":"#f87171"}.get(q.get("difficulty","Medium"),"#94a3b8")
-            st.markdown(f"<div style='font-size:.72rem;font-weight:700;color:{diff_color};text-transform:uppercase'>{q.get('difficulty','?')} · {q.get('topic_tag','')}</div>",unsafe_allow_html=True)
-            st.markdown(f"**Q{i+1}.** {q['q']}")
-            opts=q["options"]
-            chosen=st.radio(f"q{i}",list(opts.keys()),format_func=lambda k,o=opts:f"{k}) {o[k]}",key=f"quiz_radio_{i}",label_visibility="collapsed")
-            qs["answers"][i]=chosen
-            if st.button(f"Check Answer",key=f"check_{i}"):
-                qs["submitted"].add(i)
-                with st.spinner("Analysing..."):
-                    try:
-                        fb_prompt=f"Question: {q['q']}\nOptions: {q['options']}\nCorrect: {q['answer']}\nStudent chose: {chosen}\nExplanation: {q['explanation']}"
-                        fb=call_gemini(model,FEEDBACK_SYSTEM,fb_prompt,temperature=0.4)
-                        qs["feedback"][i]=fb
-                    except Exception as e: qs["feedback"][i]=f"Error: {e}"
-            if i in qs["submitted"]:
-                is_correct=qs["answers"].get(i)==q["answer"]
-                if is_correct:
-                    st.success(qs["feedback"].get(i,""),icon="✅")
-                    correct_count+=1
-                else:
-                    st.error(qs["feedback"].get(i,""),icon="❌")
-            st.markdown("<div class='divider'></div>",unsafe_allow_html=True)
-        if len(qs["submitted"])==len(qs["questions"]):
-            pct=int(correct_count/len(qs["questions"])*100)
-            if pct>=80: st.success(f"Score: {correct_count}/{len(qs['questions'])} ({pct}%) — Excellent!",icon="🏆")
-            elif pct>=50: st.warning(f"Score: {correct_count}/{len(qs['questions'])} ({pct}%) — Keep revising!",icon="📈")
-            else: st.error(f"Score: {correct_count}/{len(qs['questions'])} ({pct}%) — Review with Mentor.",icon="⚠️")
-
-elif nav == "📊  My Progress":
-    st.markdown("<div class='page-title'>📊 My Progress</div>",unsafe_allow_html=True)
-    st.markdown("<div class='page-sub'>Track your mistake patterns and revision activity.</div>",unsafe_allow_html=True)
-    col1,col2,col3=st.columns(3)
-    total_mistakes=len(st.session_state.mistake_log)
-    total_chats=len([m for m in st.session_state.chat_history if m["role"]=="user"])
-    quiz_done=len(st.session_state.quiz_state.get("submitted",set()))
-    for col,label,val,color in [(col1,"Mistakes Diagnosed",total_mistakes,"#f87171"),(col2,"Mentor Questions Asked",total_chats,"#38bdf8"),(col3,"Quiz Qs Attempted",quiz_done,"#34d399")]:
-        col.markdown(f"<div class='ez-card' style='text-align:center'><div style='font-size:2rem;font-weight:700;color:{color}'>{val}</div><div style='font-size:.8rem;color:#94a3b8;text-transform:uppercase;letter-spacing:.07em;margin-top:.2rem'>{label}</div></div>",unsafe_allow_html=True)
-    st.markdown("<div class='divider'></div>",unsafe_allow_html=True)
-    if st.session_state.mistake_log:
-        st.markdown("#### Mistakes by Subject")
-        subject_counts={}
-        for entry in st.session_state.mistake_log:
-            s=entry.get("subject","Unknown")
-            subject_counts[s]=subject_counts.get(s,0)+1
-        for subj,cnt in subject_counts.items():
-            bar_pct=int(cnt/total_mistakes*100)
-            st.markdown(f"<div style='margin:.4rem 0'><span style='font-size:.85rem;width:90px;display:inline-block'>{subj}</span><span style='display:inline-block;background:#38bdf8;height:10px;border-radius:5px;width:{bar_pct}%;max-width:60%;vertical-align:middle;margin:0 .5rem'></span><span style='font-size:.8rem;color:#94a3b8'>{cnt} mistake{'s' if cnt>1 else ''}</span></div>",unsafe_allow_html=True)
-    else:
-        st.info("Use Correctify to diagnose mistakes and they will appear here.",icon="🔬")
-    st.markdown("<div class='divider'></div>",unsafe_allow_html=True)
-    st.markdown("#### Recent Mentor Questions")
-    user_msgs=[m["content"] for m in st.session_state.chat_history if m["role"]=="user"]
-    if user_msgs:
-        for q in user_msgs[-5:][::-1]:
-            st.markdown(f"<div class='ez-card' style='padding:.6rem 1rem;font-size:.87rem'>🔹 {q}</div>",unsafe_allow_html=True)
-    else:
-        st.info("Ask your first question in Mentor to see history here.",icon="🧑‍🏫")
+"""
+, unsafe
+allow
+_
+_
+html=True)
+# ─── GEMINI CLIENT
+─────────────────────────────────────────────────────────
+────
+@st.cache
+_
+resource(show
+_
+def get
+_
+client():
+try:
+spinner=False)
+# Access secret variable securely using correct modern structures
+api
+_
+key = st.secrets.get("GEMINI
+API
+_
+_
+KEY") or os.environ.get("GEMINI
+API
+_
+_
+if not api
+_
+key:
+return None
+return genai.Client(api
+_
+key=api
+_
+key)
+except Exception:
+return None
+KEY")
+def call
+_gemini(client, prompt: str, system: str, temperature: float = 0.7) -> str:
+try:
+response = client.models.generate
+_
+content(
+model="gemini-1.5-flash"
+,
+contents=prompt,
+config=types.GenerateContentConfig(
+system
+_
+instruction=system,
+temperature=temperature,
+max
+_
+output
+tokens=2048,
+_
+),
+)
+return response.text
+except Exception as e:
+return f"⚠ Error parsing request: {str(e)}"
+# ─── SYSTEM PROMPTS
+─────────────────────────────────────────────────────────
+───
+MENTOR
+_
+You are 'Arya'
+Style rules:
+SYSTEM = """
+— an elite JEE/NEET mentor with 15+ years of IIT coaching.
+- Start EVERY answer with a vivid real-world analogy in bold.
+- Structure: 🌍 Analogy → 📖 Concept → 📐 Formula → 🎯 Exam Tip
+- Use markdown formatting: bold, bullet points, code blocks for formulas.
+- Be warm, encouraging, exam-focused.
+- Only answer JEE/NEET subjects: Physics, Chemistry, Biology, Math.
+- End every response with: 🎯 **Exam Tip:** [one high-yield tip]
+"""
+CORRECTIFY
+SYSTEM = """
+_
+You are 'CorrectifyAI'
+— a JEE/NEET error diagnostician.
+For every mistake submitted:
+1. 🔴 **Root Error**
+— exact conceptual gap or formula mistake
+2. ❌ **Why It's Wrong**
+— clear logical explanation
+3. ✅ **Correct Approach**
+— step-by-step solution
+4. 📚 **Topic to Revise**
+— specific NCERT chapter / JEE syllabus topic
+5. 🧠
+**Memory Hook**
+— one trick/mnemonic to prevent this again
+Use bold headers, be direct but kind.
+"""
+TIMETABLE
+SYSTEM = """
+_
+You are 'PlannerAI'
+— a JEE/NEET revision schedule expert.
+Create a detailed 7-day timetable:
+- Weak topics appear MORE often (spaced repetition)
+- Each day: morning slot (30 min revision) + main slot + evening problems (60 min)
+- Alternate subjects to prevent burnout
+- Sunday = light revision + rest
+- Include book references: NCERT, HC Verma, DC Pandey, MS Chouhan, etc.
+- Use ### Day 1, ### Day 2 ... headers
+- End with 💡 3 Power Tips for execution
+Format cleanly with markdown.
+"""
+# ─── SESSION STATE
+─────────────────────────────────────────────────────────
+────
+if "page" not in st.session
+state:
+_
+st.session
+_
+state.page = "home"
+if "mentor
+_
+messages" not in st.session
+_
+st.session
+state.mentor
+_
+_
+messages = []
+if "mistake
+_
+log" not in st.session
+state:
+_
+st.session
+state.mistake
+_
+_
+log = []
+state:
+# ─── TOP BAR
+─────────────────────────────────────────────────────────
+──────────
+client = get
+_
+client()
+api
+_
+status = "⚡ Live" if client else "🔴 No Key"
+st.markdown(f"""
+<div class='top-bar'>
+<div class='top-bar-logo'>⚡ ExamZen</div>
+<div class='top-bar-badge'>{api
+_
+status}</div>
+</div>
+"""
+, unsafe
+allow
+_
+_
+html=True)
+# ─── FIXED VISUAL NAVIGATION NAV OVERLAY
+───────────────────────────────────────
+pages = [
+("home"
+"🏠"
+,
+,
+("mentor"
+"󰳓"
+,
+,
+("correctify"
+"🔍"
+,
+,
+("timetable"
+,
+"📅"
+,
+"Home"),
+"Mentor"),
+"Fix"),
+"Plan"),
+]
+nav
+html = "<div class='bottom-nav'>"
+_
+for pid, icon, label in pages:
+active = "active" if st.session
+_
+state.page == pid else ""
+nav
+html += f"""
+_
+<div class='nav-item {active}'>
+<span class='nav-icon'>{icon}</span>
+<span class='nav-label'>{label}</span>
+</div>"""
+html += "</div>"
+nav
+st.
+_
